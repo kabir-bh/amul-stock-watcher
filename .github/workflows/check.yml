@@ -18,7 +18,7 @@ jobs:
       BUTTON_SELECTOR: ${{ secrets.BUTTON_SELECTOR }}
       IN_STOCK: ${{ secrets.IN_STOCK }}
       OUT_OF_STOCK: ${{ secrets.OUT_OF_STOCK }}
-      STABILITY: 1
+      STABILITY: 2
       TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
       TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
       EMAIL_FROM: ${{ secrets.EMAIL_FROM }}

@@ -58,8 +58,7 @@ jobs:
            
       # ⬇️ Email only if a change was detected AND email secrets are present
       - name: Email on change
-        if: ${{ steps.runcheck.outputs.status
-                && secrets.EMAIL_FROM != '' && secrets.EMAIL_TO != '' && secrets.EMAIL_APP_PASSWORD != '' }}
+        if: ${{ steps.runcheck.outputs.status && secrets.EMAIL_FROM != '' && secrets.EMAIL_TO != '' && secrets.EMAIL_APP_PASSWORD != '' }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com

@@ -69,9 +69,3 @@ jobs:
           to: ${{ env.EMAIL_TO }}
           from: ${{ env.EMAIL_FROM }}
           body: "${{ steps.runcheck.outputs.status }} → ${{ steps.runcheck.outputs.url }}"
-      - name: Telegram TEST ping (temporary)
-        if: ${{ env.TG_BOT_TOKEN != '' && env.TG_CHAT_ID != '' }}
-        run: |
-          curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
-           -H 'Content-Type: application/json' \
-           -d "{\"chat_id\":\"${TG_CHAT_ID}\",\"text\":\"TEST ping from GitHub Actions ✅\"}"

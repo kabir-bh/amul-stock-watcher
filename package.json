@@ -1,0 +1,13 @@
+{
+  "name": "amul-stock-watcher",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node index.js",
+    "postinstall": "npx playwright install --with-deps"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.47.2"
+  }
+}
+

@@ -1,0 +1,47 @@
+name: Amul Stock (Primary)
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # every 5 minutes
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - id: runcheck
+        run: npm run check
+        env:
+          PRODUCT_URL: ${{ secrets.PRODUCT_URL }}
+          IN_STOCK: ${{ secrets.IN_STOCK }}
+          OUT_OF_STOCK: ${{ secrets.OUT_OF_STOCK }}
+          BUTTON_SELECTOR: ${{ secrets.BUTTON_SELECTOR }}
+          STABILITY: "2"
+
+      # --- Email alert (optional) ---
+      - name: Send email on change
+        if: contains(steps.runcheck.outputs.status, 'STOCK')
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_FROM }}
+          password: ${{ secrets.EMAIL_APP_PASSWORD }}
+          subject: "[Amul Stock] ${{ steps.runcheck.outputs.status }}"
+          to: ${{ secrets.EMAIL_TO }}
+          from: ${{ secrets.EMAIL_FROM }}
+          body: "${{ steps.runcheck.outputs.status }} → ${{ steps.runcheck.outputs.url }}"
+
+      # --- Telegram alert (optional) ---
+      - name: Telegram on change
+        if: contains(steps.runcheck.outputs.status, 'STOCK')
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
+           -H 'Content-Type: application/json' \
+           -d "{\"chat_id\":\"${{ secrets.TG_CHAT_ID }}\",\"text\":\"${{ steps.runcheck.outputs.status }} → ${{ steps.runcheck.outputs.url }}\"}"
+

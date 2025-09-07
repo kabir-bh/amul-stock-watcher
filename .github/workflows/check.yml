@@ -12,7 +12,7 @@ jobs:
     permissions:
       contents: write
 
-    # Expose secrets as env so we can use env.* in `if:` expressions
+    # expose secrets as env so we can use env.* inside `if:` safely
     env:
       PRODUCT_URL: ${{ secrets.PRODUCT_URL }}
       BUTTON_SELECTOR: ${{ secrets.BUTTON_SELECTOR }}
@@ -36,11 +36,10 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
 
-      # Run checker (index.js must write outputs via GITHUB_OUTPUT)
+      # index.js must write outputs via GITHUB_OUTPUT (status,url) when a change happens
       - id: runcheck
         run: node index.js
 
-      # Save .state.json so the next run knows prior status
       - name: Save state file to repo
         if: always()
         run: |
@@ -52,7 +51,6 @@ jobs:
             git push
           fi
 
-      # Telegram alert (only if a change happened AND TG env vars present)
       - name: Telegram on change
         if: ${{ steps.runcheck.outputs.status && env.TG_BOT_TOKEN != '' && env.TG_CHAT_ID != '' }}
         run: |
@@ -60,6 +58,15 @@ jobs:
            -H 'Content-Type: application/json' \
            -d "{\"chat_id\":\"${TG_CHAT_ID}\",\"text\":\"${{ steps.runcheck.outputs.status }} → ${{ steps.runcheck.outputs.url }}\"}"
 
-      # Email alert (only if a change happened AND email env vars present)
       - name: Email on change
-        if: ${{ steps.runcheck.outputs.status && env.EMAIL_FROM != '' && env.EMAIL_TO != '' && env.EMAIL
+        if: ${{ steps.runcheck.outputs.status && env.EMAIL_FROM != '' && env.EMAIL_TO != '' && env.EMAIL_APP_PASSWORD != '' }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ env.EMAIL_FROM }}
+          password: ${{ env.EMAIL_APP_PASSWORD }}
+          subject: "[Amul Stock] ${{ steps.runcheck.outputs.status }}"
+          to: ${{ env.EMAIL_TO }}
+          from: ${{ env.EMAIL_FROM }}
+          body: "${{ steps.runcheck.outputs.status }} → ${{ steps.runcheck.outputs.url }}"

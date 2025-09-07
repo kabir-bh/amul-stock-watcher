@@ -12,6 +12,19 @@ jobs:
     permissions:
       contents: write
 
+    # Expose secrets as env so we can use env.* in `if:` expressions
+    env:
+      PRODUCT_URL: ${{ secrets.PRODUCT_URL }}
+      BUTTON_SELECTOR: ${{ secrets.BUTTON_SELECTOR }}
+      IN_STOCK: ${{ secrets.IN_STOCK }}
+      OUT_OF_STOCK: ${{ secrets.OUT_OF_STOCK }}
+      STABILITY: 2
+      TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+      TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -20,23 +33,14 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      # Install dependencies
       - run: npm install --no-audit --no-fund
-
-      # Install Playwright browsers + OS deps (Chromium only = faster)
       - run: npx playwright install --with-deps chromium
 
-      # ⬇️ RUN THE CHECKER (this sets outputs if a change happened)
+      # Run checker (index.js must write outputs via GITHUB_OUTPUT)
       - id: runcheck
         run: node index.js
-        env:
-          PRODUCT_URL: ${{ secrets.PRODUCT_URL }}
-          BUTTON_SELECTOR: ${{ secrets.BUTTON_SELECTOR }}
-          IN_STOCK: ${{ secrets.IN_STOCK }}
-          OUT_OF_STOCK: ${{ secrets.OUT_OF_STOCK }}
-          STABILITY: "2"
 
-      # ⬇️ SAVE .state.json back to the repo so next run knows prior status
+      # Save .state.json so the next run knows prior status
       - name: Save state file to repo
         if: always()
         run: |
@@ -48,24 +52,14 @@ jobs:
             git push
           fi
 
-      # ⬇️ Telegram only if a change was detected AND TG secrets are present
+      # Telegram alert (only if a change happened AND TG env vars present)
       - name: Telegram on change
-        if: ${{ steps.runcheck.outputs.status && secrets.TG_BOT_TOKEN != '' && secrets.TG_CHAT_ID != '' }}
+        if: ${{ steps.runcheck.outputs.status && env.TG_BOT_TOKEN != '' && env.TG_CHAT_ID != '' }}
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
+          curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
            -H 'Content-Type: application/json' \
-           -d "{\"chat_id\":\"${{ secrets.TG_CHAT_ID }}\",\"text\":\"${{ steps.runcheck.outputs.status }} → ${{ steps.runcheck.outputs.url }}\"}"
-           
-      # ⬇️ Email only if a change was detected AND email secrets are present
+           -d "{\"chat_id\":\"${TG_CHAT_ID}\",\"text\":\"${{ steps.runcheck.outputs.status }} → ${{ steps.runcheck.outputs.url }}\"}"
+
+      # Email alert (only if a change happened AND email env vars present)
       - name: Email on change
-        if: ${{ steps.runcheck.outputs.status && secrets.EMAIL_FROM != '' && secrets.EMAIL_TO != '' && secrets.EMAIL_APP_PASSWORD != '' }}
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          username: ${{ secrets.EMAIL_FROM }}
-          password: ${{ secrets.EMAIL_APP_PASSWORD }}
-          subject: "[Amul Stock] ${{ steps.runcheck.outputs.status }}"
-          to: ${{ secrets.EMAIL_TO }}
-          from: ${{ secrets.EMAIL_FROM }}
-          body: "${{ steps.runcheck.outputs.status }} → ${{ steps.runcheck.outputs.url }}"
+        if: ${{ steps.runcheck.outputs.status && env.EMAIL_FROM != '' && env.EMAIL_TO != '' && env.EMAIL
